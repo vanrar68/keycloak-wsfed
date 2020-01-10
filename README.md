@@ -213,7 +213,7 @@ Note that the "issuer" is the value in "EndpointReference" from the `WSFed Metad
 Then, making sure that the jar and the fediz-config.xml are in a same directory, run:
 
 ```
-java -jar IdPTestClient.jar --fediz.configFilePath=fediz_config.xml
+java -jar IdPTestClient.jar --fediz.configFilePath=fediz-config.xml --connection.protocol=WSFED
 ```
 
 The website at localhost:7000 will have the option to login with WS-Fed.
