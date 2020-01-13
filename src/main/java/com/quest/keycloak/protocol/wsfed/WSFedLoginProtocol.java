@@ -327,7 +327,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
         if (!client.getRedirectUris().isEmpty()) {
             redirectUri = client.getRedirectUris().iterator().next();
         }
-        String logoutUrl = RedirectUtils.verifyRedirectUri(uriInfo, redirectUri, realm, client);
+        String logoutUrl = RedirectUtils.verifyRedirectUri(session, redirectUri, client);
         if (logoutUrl == null) {
             logger.warn("Can't do backchannel logout. No SingleLogoutService POST Binding registered for client: " + client.getClientId());
             return;
