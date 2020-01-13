@@ -104,7 +104,7 @@ public class WSFedOIDCAccessTokenBuilder {
     public String build() throws NoSuchAlgorithmException, CertificateEncodingException {
         TokenManager tokenManager = new TokenManager();
         UserModel user = session.users().getUserById(userSession.getUser().getId(), realm);
-        AccessToken accessToken = tokenManager.createClientAccessToken(session, realm, client, user, userSession, DefaultClientSessionContext.fromClientSessionScopeParameter(clientSession));
+        AccessToken accessToken = tokenManager.createClientAccessToken(session, realm, client, user, userSession, DefaultClientSessionContext.fromClientSessionScopeParameter(clientSession, session));
         accessToken = transformAccessToken(session, accessToken, userSession, clientSession);
         return encodeToken(realm, accessToken);
     }
