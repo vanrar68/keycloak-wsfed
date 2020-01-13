@@ -364,14 +364,19 @@ public class WSFedLoginProtocol implements LoginProtocol {
         logger.debug("frontchannelLogout");
         ClientModel client = clientSession.getClient();
         String redirectUri = null;
-        if (!client.getRedirectUris().isEmpty()) {
+        /*if (!client.getRedirectUris().isEmpty()) {
             redirectUri = client.getRedirectUris().iterator().next();
+        }*/
+        if (!client.getManagementUrl().isEmpty()) {
+            redirectUri = client.getManagementUrl();
+            logger.info("Redirect URL: " + redirectUri);
         }
         String logoutUrl = RedirectUtils.verifyRedirectUri(uriInfo, redirectUri, realm, client);
         if (logoutUrl == null) {
             logger.error("Can't finish WS-Fed logout as there is no logout binding set. Has the redirect URI being used been added to the valid redirect URIs in the client?");
             return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REDIRECT_URI);
         }
+        logger.info("Logout URL: " + logoutUrl);
 
         WSFedResponseBuilder builder = new WSFedResponseBuilder();
         builder.setMethod(HttpMethod.GET)
