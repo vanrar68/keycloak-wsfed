@@ -39,6 +39,7 @@ public class WSFedResponseBuilder {
     protected String context;
     protected String replyTo;
     protected String username;
+    protected String iFrameLogoutUrl;
     protected String method = HttpMethod.GET;
 
     public String getDestination() {
@@ -142,6 +143,16 @@ public class WSFedResponseBuilder {
     }
 
     /**
+     * Sets iFrame url called by the browser to trigger client logout
+     * @param url the actual url
+     * @return this WSFedResponseBuilder
+     */
+    public WSFedResponseBuilder setiFrameLogoutUrl(String url) {
+        this.iFrameLogoutUrl = url;
+        return this;
+    }
+
+    /**
      * Builds the javax Response containing the actual OK response with the self-executing control.
      * FIXME I'm pretty sure that the CacheControl is pretty useless here since it isn't used in any ResponseBuilder.
      * @param result the value to be set in the wresult field. Must be a <wst:RequestSecurityTokenResponse> element
@@ -175,36 +186,53 @@ public class WSFedResponseBuilder {
         StringBuilder builder = new StringBuilder();
 
         builder.append("<HTML>")
-            .append("<HEAD>")
-            .append("<TITLE>HTTP Binding Response (Response)</TITLE>")
-            .append("</HEAD>")
-            .append("<BODY Onload=\"document.forms[0].submit()\">")
-            .append("<FORM METHOD=\"").append(method).append("\" ACTION=\"").append(destination).append("\">");
+                .append("<HEAD>")
+                .append("<TITLE>HTTP Binding Response (Response)</TITLE>")
+                .append("</HEAD>")
+                .append("<BODY Onload=\"document.forms[0].submit()\">")
+                .append("<FORM METHOD=\"").append(method).append("\" ACTION=\"").append(destination).append("\">");
 
-        String[][] params = new String[][] {
-            { WSFedConstants.WSFED_ACTION, action },
-            //FIXME check if this is necessary (i.e. actually used), as wrealm doesn't seem to be part of the protocol for responses.
-            { WSFedConstants.WSFED_REALM, realm },
-            { WSFedConstants.WSFED_RESULT, result!=null ? escapeAttribute(result) : null },
-            //FIXME check if this is necessary (i.e. actually used), as wreply doesn't seem to be part of the protocol for responses.
-            { WSFedConstants.WSFED_REPLY, replyTo },
-            { WSFedConstants.WSFED_CONTEXT, context }
-        };
-        for(String[] p : params) {
-            if (isNotNull(p[1])) {
-                builder.append("<INPUT TYPE=\"HIDDEN\" NAME=\"").append(p[0]).append("\" VALUE=\"").append(p[1]).append("\" />");
+        // Include form fields for everything except SIGNOUTCLEANUP responses
+        if (!(action == WSFedConstants.WSFED_SIGNOUT_CLEANUP_ACTION)) {
+            String[][] params = new String[][]{
+                    {WSFedConstants.WSFED_ACTION, action},
+                    //FIXME check if this is necessary (i.e. actually used), as wrealm doesn't seem to be part of the protocol for responses.
+                    {WSFedConstants.WSFED_REALM, realm},
+                    {WSFedConstants.WSFED_RESULT, result != null ? escapeAttribute(result) : null},
+                    //FIXME check if this is necessary (i.e. actually used), as wreply doesn't seem to be part of the protocol for responses.
+                    {WSFedConstants.WSFED_REPLY, replyTo},
+                    {WSFedConstants.WSFED_CONTEXT, context}
+            };
+            for (String[] p : params) {
+                if (isNotNull(p[1])) {
+                    builder.append("<INPUT TYPE=\"HIDDEN\" NAME=\"").append(p[0]).append("\" VALUE=\"").append(p[1]).append("\" />");
+                }
             }
+            return builder.append("<NOSCRIPT>")
+                    .append("<P>JavaScript is disabled. We strongly recommend to enable it. Click the button below to continue.</P>")
+                    .append("<INPUT TYPE=\"SUBMIT\" VALUE=\"CONTINUE\" />")
+                    .append("</NOSCRIPT>")
+                    .append("</FORM></BODY></HTML>")
+                    .toString();
         }
-
-        return builder.append("<NOSCRIPT>")
-            .append("<P>JavaScript is disabled. We strongly recommend to enable it. Click the button below to continue.</P>")
-            .append("<INPUT TYPE=\"SUBMIT\" VALUE=\"CONTINUE\" />")
-            .append("</NOSCRIPT>")
-            .append("</FORM></BODY></HTML>")
-            .toString();
+        /*
+        * In case of SIGNOUTCLEANUP response include iframes that triggers independent client logouts instead of consecutives
+        * logouts.
+         */
+        else {
+            return builder.append("<NOSCRIPT>")
+                    .append("<P>JavaScript is disabled. We strongly recommend to enable it. Click the button below to continue.</P>")
+                    .append("<INPUT TYPE=\"SUBMIT\" VALUE=\"CONTINUE\" />")
+                    .append("</NOSCRIPT>")
+                    .append("</FORM>")
+                    .append("<iframe style=\"visibility: hidden; width: 1px; height: 1px;\" src=\"")
+                    .append(iFrameLogoutUrl)
+                    .append("\" id=\"signoutFrame\" class=\"signoutFrame\"></iframe>")
+                    .append("</BODY></HTML>").toString();
+        }
     }
 
-    /**
+     /**
      * Goes through every value of the string in parameter to replace "illegal" characters by their escaped value.
      * @param s The string to "escape"
      * @return the inpt string with "illegal" characters transformed for correctness

@@ -36,6 +36,7 @@ import org.keycloak.dom.saml.v1.assertion.SAML11AssertionType;
 import org.keycloak.dom.saml.v2.assertion.AssertionType;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.models.*;
+import org.keycloak.protocol.*;
 import org.keycloak.protocol.LoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
 import org.keycloak.protocol.saml.SamlProtocolUtils;
@@ -55,6 +56,9 @@ import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.Map;
+
+import static org.keycloak.protocol.saml.SamlProtocol.SAML_SINGLE_LOGOUT_SERVICE_URL_REDIRECT_ATTRIBUTE;
 
 /**
  * Implementation of keycloak's LoginProtocol. The LoginProtocol is used during the authentication steps for login AND
@@ -76,6 +80,7 @@ public class WSFedLoginProtocol implements LoginProtocol {
     public static final String WSFED_SAML_ASSERTION_TOKEN_FORMAT = "wsfed.saml_assertion_token_format";
     public static final String WSFED_LOGOUT_BINDING_URI = "WSFED_LOGOUT_BINDING_URI";
     public static final String WSFED_CONTEXT = "WSFED_CONTEXT";
+
 
     private KeycloakSession session;
 
@@ -300,6 +305,12 @@ public class WSFedLoginProtocol implements LoginProtocol {
         return WsFedSAMLAssertionTokenFormat.SAML20_ASSERTION_TOKEN_FORMAT;
     }
 
+    public String getLogoutBinding(ClientModel client) {
+        String value = client.getAttribute(SAML_SINGLE_LOGOUT_SERVICE_URL_REDIRECT_ATTRIBUTE);
+        logger.info("Client Logout binding: " + value);
+        return value;
+    }
+
     protected boolean useJwt(ClientModel client) {
         return Boolean.parseBoolean(client.getAttribute(WSFED_JWT));
     }
@@ -363,26 +374,23 @@ public class WSFedLoginProtocol implements LoginProtocol {
     public Response frontchannelLogout(UserSessionModel userSession, AuthenticatedClientSessionModel clientSession) {
         logger.debug("frontchannelLogout");
         ClientModel client = clientSession.getClient();
-        String redirectUri = null;
-        /*if (!client.getRedirectUris().isEmpty()) {
-            redirectUri = client.getRedirectUris().iterator().next();
-        }*/
-        if (!client.getManagementUrl().isEmpty()) {
-            redirectUri = client.getManagementUrl();
-            logger.info("Redirect URL: " + redirectUri);
+
+        String logoutUrl = null;
+        if (!getLogoutBinding(client).isEmpty()) {
+            logoutUrl = getLogoutBinding(client) + "?wa=" + WSFedConstants.WSFED_SIGNOUT_CLEANUP_ACTION;
+            logger.info("Logout URL: " + logoutUrl);
         }
-        String logoutUrl = RedirectUtils.verifyRedirectUri(uriInfo, redirectUri, realm, client);
+
         if (logoutUrl == null) {
             logger.error("Can't finish WS-Fed logout as there is no logout binding set. Has the redirect URI being used been added to the valid redirect URIs in the client?");
             return ErrorPage.error(session, null, Response.Status.BAD_REQUEST, Messages.INVALID_REDIRECT_URI);
         }
-        logger.info("Logout URL: " + logoutUrl);
 
         WSFedResponseBuilder builder = new WSFedResponseBuilder();
         builder.setMethod(HttpMethod.GET)
                 .setAction(WSFedConstants.WSFED_SIGNOUT_CLEANUP_ACTION)
-                .setReplyTo(getEndpoint(uriInfo, realm))
-                .setDestination(logoutUrl);
+                .setDestination(getEndpoint(uriInfo, realm))
+                .setiFrameLogoutUrl(logoutUrl);
 
         return builder.buildResponse(null);
     }
