@@ -244,8 +244,9 @@ In the **Mappers** tab create the following mappers:
 3. **Name**: `SAML email`, **Mapper Type**: `SAML User Property`, **Property**: `email`, **SAML Attribute Name**:
 `emailaddress`, **SAML Attribute NameFormat**: `Basic`
 
-Be aware that if configured to use SAML1.1 token format the keycloak-wsfed module will add the default namespace 
- `http://schemas.microsoft.com/ws/2005/05/identity/claims/` in front of the SAML attribute name.
+Be aware that if configured to use SAML1.1 token format (and no value is present in the `Friendly Name/ Namespace`) 
+the keycloak-wsfed module will add the default namespace  `http://schemas.microsoft.com/ws/2005/05/identity/claims/` 
+in front of the SAML attribute name. 
   
 In the **Installation** tab, copy the content of the "X509Certificate" field from the `WSFed Metadata IDP Descriptor` to
 a new certif.cer file.
