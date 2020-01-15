@@ -218,7 +218,7 @@ java -jar IdPTestClient.jar --fediz.configFilePath=fediz_config.xml
 
 The website at localhost:7000 will have the option to login with WS-Fed.
 
-#### Example: configuration in Sharepoint 2013
+#### Example: configuration in Sharepoint 2013/2016
 
 The realm setup for this example is the same as the one for the IdPTestClient setup.
 
@@ -232,16 +232,21 @@ Imagining that Sharepoint is also on the localhost, we have the following values
 
 * **SAML Assertion Token Format**: `SAML1.1`
 * **Valid Redirect URIs**: `https://localhost/*`
+* **Logout Service Redirect Binding URL**: `https://localhost/_trust/default.aspx`
 
 In the **Mappers** tab create the following mappers:
 
-1. **Name**: `SAML role list`, **Mapper Type**: `SAML Role List`, **Role attribute name**: `Role`, **SAML Attribute
-NameFormat**: `Basic`
+1. **Name**: `SAML role list`, **Mapper Type**: `SAML Role List`, **Role attribute name**: `role`, 
+**Friendly Name/ Namespace**: `http://schemas.microsoft.com/ws/2008/06/identity/claims`, **SAML Attribute NameFormat**: 
+`Basic`
 2. **Name**: `SAML upn`, **Mapper Type**: `SAML User Property`, **Property**: `username`, **SAML Attribute Name**:
 `upn`, **SAML Attribute NameFormat**: `Basic`
 3. **Name**: `SAML email`, **Mapper Type**: `SAML User Property`, **Property**: `email`, **SAML Attribute Name**:
 `emailaddress`, **SAML Attribute NameFormat**: `Basic`
 
+Be aware that if configured to use SAML1.1 token format the keycloak-wsfed module will add the default namespace 
+ `http://schemas.microsoft.com/ws/2005/05/identity/claims/` in front of the SAML attribute name.
+  
 In the **Installation** tab, copy the content of the "X509Certificate" field from the `WSFed Metadata IDP Descriptor` to
 a new certif.cer file.
 
@@ -272,14 +277,15 @@ $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate
 
  $realm = "urn:testsharepoint:wsfed"
  $signinurl = "https://localhost:8443/auth/realms/TestRealm/protocol/wsfed"
- $ap = New-SPTrustedIdentityTokenIssuer -Name "KeycloakTestRealm" -Description "Trust to Keycloak" -Realm $realm -ImportTrustCertificate $cert -ClaimsMappings $map1, $map2, $idClaim  -SignInUrl $signinurl -IdentifierClaim $idClaim.InputClaimType
+ $signouturl = "https://localhost:8443/auth/realms/TestRealm/protocol/wsfed"
+ $ap = New-SPTrustedIdentityTokenIssuer -Name "KeycloakTestRealm" -Description "Trust to Keycloak" -Realm $realm -ImportTrustCertificate $cert -ClaimsMappings $map1, $map2, $idClaim  -SignInUrl $signinurl -SignOutUrl $signouturl -IdentifierClaim $idClaim.InputClaimType
  $ap.UseWReplyParameter = $true
  $ap.Update()
 ```
 
-Note that the `$signinurl` is the value in "EndpointReference" from the `WSFed Metadata IDP Descriptor`.
+Note that the `$signinurl` and the `$signouturl` is the value in "EndpointReference" from the `WSFed Metadata IDP Descriptor`.
 
-**_Step 2_**: With Sharepoint 2013 Central Administration, go to **Manage Web Applications** > **Sharepoint - localhost:443** >
+**_Step 2_**: With Sharepoint 2013/2016 Central Administration, go to **Manage Web Applications** > **Sharepoint - localhost:443** >
 **Authentication Providers** > **default**, and under "Trusted Identity provider" select `KeycloakTestRealm`.
 
 When going to your Sharepoint at https://localhost, you will now have the option to log in with `KeycloakTestRealm`
